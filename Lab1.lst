@@ -1,0 +1,1308 @@
+Lab1                                                                                                                    PAGE 1
+                         1     ;Cameron Biniamow
+                         2     ;ECEN 4330
+                         3     ;Lab 1: MEMORY DUMP
+                         4     ;Due: 01/29/2021
+                         5
+                         6     ;*********************************************************************
+                         7     ;---------------------------------------------------------------------
+                         8     ;---------------------- MAIN -----------------------------------------
+                         9     ;---------------------------------------------------------------------
+                        10     ;---------------------------------------------------------------------
+  0050                  11     INPUT_MEM_ADDR  EQU     50H     ; MEMORY ADDRESS INPUT VALUE RAM LOCATION
+  0051                  12     INPUT_DATA_TYPE EQU     51H     ; DATA TYPE INPUT VALUE RAM LOCATION
+  0052                  13     INPUT_MEM_SIZE  EQU     52H     ; MEMORY SIZE INPUT VALUE RAM LOCATION
+                        14
+                        15             ORG     0H              ; BEGIN PROGRAM AT 0x0000
+0000 7155               16             ACALL   LCD_INIT        ; INITIALIZE LCD
+                        17
+                        18     L0:
+0002 111D               19             ACALL   LCD_MAIN
+0004 111D               20             ACALL   LCD_MAIN        ; INITIALIZE LCD & WRITE MAIN MENU
+0006 51D5               21             ACALL   KEYPAD_READ     ; READ INPUT FROM KEYPAD
+0008 540F               22             ANL     A, #0FH         ; MASK LOWER NIBBLE
+000A C3                 23             CLR     C               ; CLEAR CARRY FLAG
+000B 940D               24             SUBB    A, #0DH         ; CHECK THAT INPUT VALUE = 'D'
+000D 6004               25             JZ      L2              ; IF CARRY FLAG SET. INVALID INPUT VALUE
+000F 1115               26             ACALL   INVALID         ; IF INPUT VALUE != 'D', INVALID INPUT
+0011 80EF               27             SJMP    L0              ; INVALID INPUT. DISPLAY LCD MAIN MENU
+                        28     L2:
+0013 1135               29             ACALL   DUMP            ; INPUT VALUE = 'D'. BEGIN MEM DUMP
+                        30
+                        31     INVALID:
+0015 71A6               32             ACALL   LCD_CLEAR       ; CLEAR LCD. MOVE CURSOR TO R1, C1
+0017 900459             33             MOV     DPTR, #INVALID_INPUT
+001A 71B7               34             ACALL   LCD_STRING      ; PRINT 'INVALID INPUT.' ON LCD
+                        35             ; ** LOGIC FOR DELAY - KEEP MESSAGE ON SCREEN FOR ~3 SECONDS **
+001C 22                 36             RET
+                        37
+                        38
+                        39     ;---------------------------------------------------------------------
+                        40     ;---------------------- MAIN END -------------------------------------
+                        41     ;*********************************************************************
+                        42
+                        43
+                        44
+                        45     ;*********************************************************************
+                        46     ;---------------------------------------------------------------------
+                        47     ;---------------------- LCD MAIN MENU --------------------------------
+                        48     ;---------------------------------------------------------------------
+                        49     ;---------------------------------------------------------------------
+                        50     ; INITIALIZES LCD (16 x 2)
+                        51     ; PRINTS:       "[NAME] ECEN4330"
+                        52     ;               "D-DUMP"
+                        53
+                        54     LCD_MAIN:
+001D 71A6               55             ACALL   LCD_CLEAR
+001F 900409             56             MOV     DPTR, #MYNAME   ; POINTS TO NAME STRING
+0022 71B7               57             ACALL   LCD_STRING      ; WRITES STRING TO LCD
+0024 E520               58             MOV     A, ' '
+0026 71AF               59             ACALL   LCD_CHAR        ; WRITES ' ' TO LCD
+0028 900400             60             MOV     DPTR, #COURSE   ; POINTS TO COURSE STRING
+002B 71B7               61             ACALL   LCD_STRING      ; WRITES STRING TO LCD
+002D 71B2               62             ACALL   LCD_2NDLINE     ; MOVES CURSORS TO SECOND LINE OF LCD
+002F 900410             63             MOV     DPTR, #D_DUMP   ; POINTS TO D-DUMP STRING
+0032 71B7               64             ACALL   LCD_STRING      ; WRITES STRING TO LCD
+0034 22                 65             RET
+                        66
+                        67     ;---------------------------------------------------------------------
+                        68     ;---------------------- LCD MAIN MENU END ----------------------------
+                        69     ;*********************************************************************
+                        70
+                        71
+                        72
+                        73     ;*********************************************************************
+                        74     ;---------------------------------------------------------------------
+                        75     ;--------------------------- D-DUMP ----------------------------------
+                        76     ;---------------------------------------------------------------------
+                        77     ;---------------------------------------------------------------------
+                        78     ; DISPLAYS MEMORY DUMP MENU ON LCD
+                        79     ; READS USER MEMORY ADDRESS & BLOCK SIZE INPUT FROM KEYPAD
+                        80     ; RETURNS DATA STORED AT THE RESPECTIVE MEMORY ADDRESS IN HEX
+                        81
+                        82
+                        83     ;------------------------------------
+                        84     ; PROMPT USER TO ENTER MEMORY ADDRESS
+                        85     ; INPUT MUST BE IN HEX & 2 DIGITS
+                        86     ; LCD DISPLAYS INPUT VALUES AS THEY ARE PRESSED
+                        87     ; PACKS INPUT VALUES INTO 1 BYTE & STORES IN RAM
+                        88     ; AFTER 2ND VALUE IS PRESSED, NEXT PROMPT BEGINS
+                        89     ;------------------------------------
+                        90
+                        91     DUMP:
+0035 1141               92             ACALL   MEMORY_ADDRESS_INPUT; PROMPT & READ STARTING MEMORY ADDRESS
+0037 116A               93             ACALL   DATA_TYPE_INPUT ; PROMPT & READ DATA TYPE
+0039 118A               94             ACALL   DATA_TYPE_CHECK ; CHECK DATA TYPE FOR VALID INPUT
+003B 11A5               95             ACALL   BLOCK_SIZE_INPUT; PROMPT & READ BLOCK SIZE
+003D 11D4               96             ACALL   MEMORY_ADDRESS_WRITE1; WRITE MEMORY ADDRESS TO LCD
+003F 11F4               97             ACALL   DATA_WRITE      ; WRITE MEMORY DATA TO LCD
+                        98
+                        99
+                       100
+                       101
+                       102     MEMORY_ADDRESS_INPUT:
+0041 71A6              103             ACALL   LCD_CLEAR       ; CLEAR LCD
+0043 900417            104             MOV     DPTR, #BLOCK_SIZE_0
+0046 71B7              105             ACALL   LCD_STRING      ; WRITE "ENTER MEM ADDR:" ON LCD
+0048 51D5              106             ACALL   KEYPAD_READ     ; READ MEM ADDRESS INPUT FROM KEYPAD
+004A FF                107             MOV     R7, A           ; HOLD UPPER NIBBLE INPUT VALUE IN R7
+004B 71B2              108             ACALL   LCD_2NDLINE     ; MOVE CURSOR TO 2ND LINE
+004D EF                109             MOV     A, R7
+004E 513A              110             ACALL   INPUT_TO_ASCII  ; CONVERT INPUT VALUE TO ASCII
+0050 71AF              111             ACALL   LCD_CHAR        ; WRITE ASCII VALUE TO LCD
+0052 714C              112             ACALL   DELAY           ; 1ms DELAY
+0054 51D5              113             ACALL   KEYPAD_READ     ; READ MEM ADDRESS INPUT FROM KEYPAD
+0056 FE                114             MOV     R6, A           ; HOLD LOWER NIBBLE INPUT VALUE IN R6
+0057 513A              115             ACALL   INPUT_TO_ASCII  ; CONVERT INPUT VALUE TO ASCII
+0059 71AF              116             ACALL   LCD_CHAR        ; WRITE ASCII VALUE TO LCD
+005B EF                117             MOV     A, R7
+005C 540F              118             ANL     A, #0FH         ; MASK LOWER NIBBLE
+005E C4                119             SWAP    A               ; SWAP NIBBLES
+005F 8EF0              120             MOV     B, R6
+0061 53F00F            121             ANL     B, #0FH         ; MASK LOWER NIBBLE
+0064 45F0              122             ORL     A, B            ; PACK INPUT VALUES INTO 1 BYTE
+0066 7850              123             MOV     R0, #INPUT_MEM_ADDR     ; LOAD INPUT MEM ADDRESS
+0068 F6                124             MOV     @R0, A          ; STORE INPUT MEM ADDRESS IN RAM
+0069 22                125             RET
+                       126
+                       127
+                       128     ;------------------------------------
+                       129     ; PROMPT USER TO ENTER DATA TYPE
+                       130     ; USER ENTERS:      (1) BYTE
+                       131     ;                   (2) WORD
+                       132     ;                   (3) DOUBLE WORD
+                       133
+                       134     ; INPUT VALUE IS READ FROM KEYPAD
+                       135     ; INPUT VALUE IS STORED IN RAM
+                       136     ;------------------------------------
+                       137
+                       138     DATA_TYPE_INPUT:
+006A 71A6              139             ACALL   LCD_CLEAR       ; CLEAR LCD
+006C 900427            140             MOV     DPTR, #BLOCK_SIZE_1
+006F 71B7              141             ACALL   LCD_STRING      ; WRITE "SELECT DATA" ON LCD
+0071 900433            142             MOV     DPTR, #BLOCK_SIZE_1B
+0074 71B2              143             ACALL   LCD_2NDLINE     ; MOVE LCD CURSOR TO 2ND LINE
+0076 71B7              144             ACALL   LCD_STRING      ; WRITE "TYPE:" ON LCD
+                       145     L9:
+0078 71A6              146             ACALL   LCD_CLEAR       ; CLEAR LCD
+007A 900439            147             MOV     DPTR, #BLOCK_SIZE_2
+007D 71B7              148             ACALL   LCD_STRING      ; WRITE "1. BYTE, 2. WORD"
+007F 71B2              149             ACALL   LCD_2NDLINE     ; MOVE LCD CURSOR TO 2ND LINE
+0081 90044A            150             MOV     DPTR, #BLOCK_SIZE_3
+0084 71B7              151             ACALL   LCD_STRING      ; WRITE "3. DOUBLE WORD"
+0086 51D5              152             ACALL   KEYPAD_READ     ; READ INPUT VALUE FROM KEYPAD
+0088 FE                153             MOV     R6, A           ; HOLD INPUT VALUE IN R6
+0089 22                154             RET
+                       155
+                       156
+                       157     ;------------------------------------
+                       158     ; CHECKS INPUT VALUE FROM KEYPAD
+                       159     ; IF INPUT VALUE IS NOT 1, 2, OR 3, DISPLAY 'INVALID' STRING
+                       160     ; PROMPTS USER TO ENTER DATA TYPE AGAIN AFTER INVALID INPUT
+                       161     ;------------------------------------
+                       162
+                       163     DATA_TYPE_CHECK:
+008A C3                164             CLR     C               ; CLEAR CARRY FLAG
+008B 9401              165             SUBB    A, #01H         ; CHECK IF INPUT = 1
+008D 6011              166             JZ      MEMORY
+                       167
+008F C3                168             CLR     C               ; CLEAR CARRY FLAG
+0090 EE                169             MOV     A, R6           ; RESTORE INPUT VALUE
+0091 9402              170             SUBB    A, #02H         ; CHECK IF INPUT = 2
+0093 600B              171             JZ      MEMORY
+                       172
+0095 C3                173             CLR     C               ; CLEAR CARRY FLAG
+0096 EE                174             MOV     A, R6           ; RESTORE INPUT VALUE
+0097 9403              175             SUBB    A, #03H         ; CHECK IF INPUT = 3
+0099 6005              176             JZ      MEMORY
+009B 1115              177             ACALL   INVALID         ; DISPLAY 'INVALID' STRING IF INVALID INPUT
+009D 020078            178             LJMP    L9              ; PROMPT USER TO ENTER DATA TYPE AGAIN
+                       179
+                       180     MEMORY:
+00A0 EE                181             MOV     A, R6           ; RESTORE DATA TYPE INPUT VALUE
+00A1 7851              182             MOV     R0, #INPUT_DATA_TYPE; LOAD DATA TYPE RAM ADDRESS
+00A3 F6                183             MOV     @R0, A          ; STORE DATA TYPE INPUT VALUE IN RAM
+00A4 22                184             RET
+                       185
+                       186
+                       187     ;------------------------------------
+                       188     ; PROMPT USER TO INPUT DATA SIZE
+                       189     ; DATA SIZE INPUT IS IN HEX. MUST BE 2 DIGITS
+                       190     ; LCD PRINTS INPUT VALUES AS THEY ARE PRESSED
+                       191     ; CHECKS IF INPUT VALUE = 0
+                       192     ; IF INPUT VALUE = 0, DISPLAYS 'INVALID' MESSAGE & PROMPTS USER AGAIN
+                       193     ; INPUT VALUES ARE PACKED INTO 1 BYTE & STORED IN RAM
+                       194     ;------------------------------------
+                       195
+                       196     BLOCK_SIZE_INPUT:
+00A5 900468            197             MOV     DPTR, #DATA_SIZE
+00A8 71A6              198             ACALL   LCD_CLEAR       ; CLEAR LCD
+00AA 71B7              199             ACALL   LCD_STRING      ; WRITE "ENTER DATA SIZE:" ON LCD
+00AC 51D5              200             ACALL   KEYPAD_READ     ; READ 1ST DATA SIZE INPUT FROM KEYPAD
+00AE FF                201             MOV     R7, A           ; HOLD 1ST DATA SIZE INPUT IN R7
+00AF 71B2              202             ACALL   LCD_2NDLINE     ; MOVE CURSOR TO 2ND LINE
+00B1 EF                203             MOV     A, R7           ; RESTORE 1ST DATA SIZE INPUT VALUE
+00B2 513A              204             ACALL   INPUT_TO_ASCII  ; CONVERT INPUT VALUE TO ASCII
+00B4 71AF              205             ACALL   LCD_CHAR        ; WRITE ASCII VALUE ON LCD
+00B6 714C              206             ACALL   DELAY           ; 1ms DELAY
+00B8 51D5              207             ACALL   KEYPAD_READ     ; READ 2ND DATA SIZE INPUT FROM KEYPAD
+00BA FE                208             MOV     R6, A           ; HOLD 2ND DATA SIZE INPUT IN R6
+00BB 513A              209             ACALL   INPUT_TO_ASCII  ; CONVERT INPUT VALUE TO ASCII
+00BD 71AF              210             ACALL   LCD_CHAR        ; WRITE ASCII VALUE TO LCD
+00BF EF                211             MOV     A, R7           ; RESTORE 1ST DATA SIZE INPUT VALUE
+00C0 540F              212             ANL     A, #0FH         ; MASK LOWER NIBBLE
+00C2 C4                213             SWAP    A               ; SWAP NIBBLES
+00C3 8EF0              214             MOV     B, R6           ; RESTORE 2ND DATA SIZE INPUT VALUE
+00C5 53F00F            215             ANL     B, #0FH         ; MASK LOWER NIBBLE
+00C8 45F0              216             ORL     A, B            ; PACK 1ST & 2ND INPUT VALUES INTO ACCUMULATOR
+00CA 7004              217             JNZ     STORE           ; IF BLOCK SIZE != 0, STORE VALUE IN RAM
+00CC 1115              218             ACALL   INVALID         ; IF BLOCK SIZE = 0, WRITE 'INVALID' STRING
+00CE 11A5              219             ACALL   BLOCK_SIZE_INPUT; BLOCK SIZE INPUT VALUE = 0, PROMPT USER AGAIN
+                       220     STORE:
+00D0 7852              221             MOV     R0, #INPUT_MEM_SIZE; LOAD MEMORY SIZE RAM LOCATION
+00D2 F6                222             MOV     @R0, A          ; STORE MEMORY SIZE INPUT VALUE IN RAM
+00D3 22                223             RET
+                       224
+                       225     ;------------------------------------
+                       226     ; LOAD THE STARTING MEMORY ADDRESS FROM RAM
+                       227     ; CONVERT VALUE TO ASCII & DISPLAY ON LCD
+                       228     ; Ex:   "00:"
+                       229     ;------------------------------------
+                       230
+                       231     MEMORY_ADDRESS_WRITE1:
+00D4 71A6              232             ACALL   LCD_CLEAR       ; CLEAR LCD
+00D6 7950              233             MOV     R1, #INPUT_MEM_ADDR; LOAD MEMORY ADDRESS RAM LOCATION
+00D8 E7                234             MOV     A, @R1          ; LOAD MEMORY ADDRESS FROM RAM
+                       235
+                       236     MEMORY_ADDRESS_WRITE2:
+00D9 F5F0              237             MOV     B, A            ; HOLD IN REGISTER B
+00DB C0F0              238             PUSH    B               ; PUSH MEMORY ADDRESS ONTO THE STACK
+00DD C4                239             SWAP    A               ; SWAP NIBBLES
+00DE 540F              240             ANL     A, #0FH         ; MASK LOWER NIBBLE
+00E0 513A              241             ACALL   INPUT_TO_ASCII  ; CONVERT INPUT TO ASCII
+00E2 71AF              242             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+00E4 D0F0              243             POP     B               ; RESTORE STARTING MEMORY ADDRESS
+00E6 E5F0              244             MOV     A, B
+00E8 540F              245             ANL     A, #0FH         ; MASK LOWER NIBBLE
+00EA 513A              246             ACALL   INPUT_TO_ASCII  ; CONVERT INPUT TO ASCII
+00EC 71AF              247             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+00EE 900479            248             MOV     DPTR, #SEMI_COLON
+00F1 71B7              249             ACALL   LCD_STRING      ; WRITE ":" TO LCD
+00F3 22                250             RET
+                       251
+                       252
+                       253     ;------------------------------------
+                       254     ; LOAD DATA TYPE INPUT VALUE FROM RAM
+                       255     ; CHECKS INPUT VALUE & SELECTS RESPECTIVE DATA TYPE
+                       256     ;------------------------------------
+                       257
+                       258     DATA_WRITE:
+00F4 7851              259             MOV     R0, #INPUT_DATA_TYPE; LOAD DATA TYPE RAM LOCATION
+00F6 E6                260             MOV     A, @R0          ; LOAD DATA TYPE INPUT VALUE FROM RAM
+00F7 F5F0              261             MOV     B, A            ; HOLD DATA TYPE VALUE IN REGISTER B
+00F9 C3                262             CLR     C               ; CLEAR CARRY FLAG
+00FA 9401              263             SUBB    A, #01H         ; CHECK IF DATA TYPE = 1
+00FC 600A              264             JZ      BYTE_DATA       ; JUMP TO 'BYTE' IF = 1
+00FE E5F0              265             MOV     A, B            ; RESTORE DATA TYPE INPUT VALUE
+0100 C3                266             CLR     C               ; CLEAR CARRY FLAG
+0101 9402              267             SUBB    A, #02H         ; CHECK IF DATA TYPE = 2
+0103 605C              268             JZ      WORD            ; JUMP TO 'WORD' IF = 2
+                       269
+0105 020197            270             LJMP    DOUBLE_WORD     ; JUMP TO 'DOUBLE WORD' IF = 3
+                       271
+                       272
+                       273     ;------------------------------------
+                       274     ; BYTE DATA TYPE SELECTED
+                       275     ; MEMORY DATA IS OUTPUT AS BLOCKS OF BYTES
+                       276     ; VALUES ARE IN HEX
+                       277     ; MEMORY SIZE INPUT VALUE IS # OF BYTES DISPLAYED
+                       278     ; Ex:   ## ## ## ## ## ##
+                       279     ;------------------------------------
+                       280
+                       281     BYTE_DATA:
+0108 7852              282             MOV     R0, #INPUT_MEM_SIZE; LOAD MEMORY SIZE RAM LOCATION
+010A E6                283             MOV     A, @R0          ; LOAD INPUT MEMORY SIZE FROM RAM
+010B FF                284             MOV     R7, A           ; HOLD INPUT MEMORY SIZE VALUE IN R7
+010C 1F                285             DEC     R7              ; DECREMENT MEMORY SIZE COUNTER
+010D 7850              286             MOV     R0, #INPUT_MEM_ADDR; LOAD MEMORY ADDRESS RAM LOCATION
+010F E6                287             MOV     A, @R0          ; LOAD INPUT MEMORY ADDRESS
+0110 F9                288             MOV     R1, A           ; INPUT MEMORY ADDRESS POINTER
+                       289     BYTE_LOOP:
+0111 E7                290             MOV     A, @R1          ; LOAD DATA AT INPUT MEMORY ADDRESS
+0112 F5F0              291             MOV     B, A            ; HOLD DATA IN REG B
+0114 C0F0              292             PUSH    B               ; PUSH DATA ONTO THE STACK
+0116 C4                293             SWAP    A               ; SWAP NIBBLES
+0117 540F              294             ANL     A, #0FH         ; MASK LOWER NIBBLE
+0119 513A              295             ACALL   INPUT_TO_ASCII  ; CONVERT TO ASCII
+011B 71AF              296             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+011D D0F0              297             POP     B               ; RESTORE DATA FROM STACK
+011F E5F0              298             MOV     A, B            ; RESTORE DATA
+0121 540F              299             ANL     A, #0FH         ; MASK LOWER NIBBLE
+0123 513A              300             ACALL   INPUT_TO_ASCII  ; CONVERT TO ASCII
+0125 71AF              301             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+0127 71B2              302             ACALL   LCD_2NDLINE     ; MOVE LCD CURSOR TO 2ND LINE
+0129 90047B            303             MOV     DPTR, #SCROLL_PAGE
+012C 71B7              304             ACALL   LCD_STRING      ; WRITE "0. NEXT, 1. BACK"
+012E 0201CD            305             LJMP    SCROLL          ; JUMP TO SCROLL FUNCTION
+                       306
+                       307     SCROLL_BACK_DATA_TYPE:
+0131 7851              308             MOV     R0, #INPUT_DATA_TYPE; LOAD DATA TYPE RAM LOCATION
+0133 E6                309             MOV     A, @R0          ; LOAD DATA TYPE INPUT VALUE FROM RAM
+0134 F5F0              310             MOV     B, A            ; HOLD DATA TYPE VALUE IN REGISTER B
+0136 C3                311             CLR     C               ; CLEAR CARRY FLAG
+0137 9401              312             SUBB    A, #01H         ; CHECK IF DATA TYPE = 1
+0139 60D6              313             JZ      BYTE_LOOP       ; JUMP TO 'BYTE' IF = 1
+013B E5F0              314             MOV     A, B            ; RESTORE DATA TYPE INPUT VALUE
+013D C3                315             CLR     C               ; CLEAR CARRY FLAG
+013E 9402              316             SUBB    A, #02H         ; CHECK IF DATA TYPE = 2
+0140 6028              317             JZ      WORD_LOOP0      ; JUMP TO 'WORD' IF = 2
+0142 E5F0              318             MOV     A, B            ; RESTORE DATA TYPE INPUT VALUE
+0144 C3                319             CLR     C               ; CLEAR CARRY FLAG
+0145 9403              320             SUBB    A, #03H         ; CHECK IF DATA TYPE = 3
+0147 6057              321             JZ      DOUBLE_WORD_LOOP0; JUMP TO 'DOUBLE WORD' IF = 3
+                       322
+                       323     SCROLL_NEXT_DATA_TYPE:
+0149 7851              324             MOV     R0, #INPUT_DATA_TYPE; LOAD DATA TYPE RAM LOCATION
+014B E6                325             MOV     A, @R0          ; LOAD DATA TYPE INPUT VALUE FROM RAM
+014C F5F0              326             MOV     B, A            ; HOLD DATA TYPE VALUE IN REGISTER B
+014E C3                327             CLR     C               ; CLEAR CARRY FLAG
+014F 9401              328             SUBB    A, #01H         ; CHECK IF DATA TYPE = 1
+0151 60BE              329             JZ      BYTE_LOOP       ; JUMP TO 'BYTE' IF = 1
+0153 E5F0              330             MOV     A, B            ; RESTORE DATA TYPE INPUT VALUE
+0155 C3                331             CLR     C               ; CLEAR CARRY FLAG
+0156 9402              332             SUBB    A, #02H         ; CHECK IF DATA TYPE = 2
+0158 6010              333             JZ      WORD_LOOP0      ; JUMP TO 'WORD' IF = 2
+015A E5F0              334             MOV     A, B            ; RESTORE DATA TYPE INPUT VALUE
+015C C3                335             CLR     C               ; CLEAR CARRY FLAG
+015D 9403              336             SUBB    A, #03H         ; CHECK IF DATA TYPE = 3
+015F 603F              337             JZ      DOUBLE_WORD_LOOP0; JUMP TO 'DOUBLE WORD' IF = 3
+                       338
+                       339     ;------------------------------------
+                       340     ; WORD DATA TYPE SELECTED
+                       341     ; MEMORY DATA IS OUTPUT AS BLOCKS OF WORDS
+                       342     ; VALUES ARE IN HEX
+                       343     ; MEMORY SIZE INPUT VALUE IS # OF WORDS DISPLAYED
+                       344     ; Ex:   #### #### ####
+                       345     ;------------------------------------
+                       346
+                       347     WORD:
+0161 7852              348             MOV     R0, #INPUT_MEM_SIZE; LOAD MEMORY SIZE RAM LOCATION
+0163 E6                349             MOV     A, @R0          ; LOAD INPUT MEMORY SIZE FROM RAM
+0164 FF                350             MOV     R7, A           ; HOLD INPUT MEMORY SIZE VALUE IN R7
+0165 1F                351             DEC     R7              ; DECREMENT MEMORY SIZE COUNTER
+0166 7850              352             MOV     R0, #INPUT_MEM_ADDR; LOAD MEMORY ADDRESS RAM LOCATION
+0168 E6                353             MOV     A, @R0          ; LOAD INPUT MEMORY ADDRESS
+0169 F9                354             MOV     R1, A           ; INPUT MEMORY ADDRESS POINTER
+                       355
+                       356     WORD_LOOP0:
+016A 7402              357             MOV     A, #02H         ; LOAD LOOP COUNTER
+                       358
+                       359     WORD_LOOP:
+                       360
+016C C0E0              361             PUSH    A               ; PUSH LOOP COUNTER ONTO THE STACK
+016E E7                362             MOV     A, @R1          ; LOAD DATA AT INPUT MEMORY ADDRESS
+016F F5F0              363             MOV     B, A            ; HOLD DATA IN REG B
+0171 C0F0              364             PUSH    B               ; PUSH DATA ONTO THE STACK
+0173 C4                365             SWAP    A               ; SWAP NIBBLES
+0174 540F              366             ANL     A, #0FH         ; MASK LOWER NIBBLE
+0176 513A              367             ACALL   INPUT_TO_ASCII  ; CONVERT TO ASCII
+0178 71AF              368             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+017A D0F0              369             POP     B               ; RESTORE DATA FROM STACK
+017C E5F0              370             MOV     A, B            ; RESTORE DATA
+017E 540F              371             ANL     A, #0FH         ; MASK LOWER NIBBLE
+0180 513A              372             ACALL   INPUT_TO_ASCII  ; CONVERT TO ASCII
+0182 71AF              373             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+0184 D0E0              374             POP     A               ; RESTORE LOOP COUNTER
+0186 14                375             DEC     A               ; DECREMENT LOOP COUNTER
+0187 6004              376             JZ      WORD_LOOP1      ; DECREMENT LOOP COUNTER
+0189 09                377             INC     R1              ; INCREMENT MEMORY ADDRESS
+018A 02016C            378             LJMP    WORD_LOOP
+                       379
+                       380     WORD_LOOP1:
+018D 71B2              381             ACALL   LCD_2NDLINE     ; MOVE LCD CURSOR TO 2ND LINE
+018F 90047B            382             MOV     DPTR, #SCROLL_PAGE
+0192 71B7              383             ACALL   LCD_STRING      ; WRITE "0. NEXT, 1. BACK"
+0194 0201CD            384             LJMP    SCROLL          ; JUMP TO SCROLL FUNCTION
+                       385
+                       386     ;------------------------------------
+                       387     ; DOUBLE WORD DATA TYPE SELECTED
+                       388     ; MEMORY DATA IS OUTPUT AS BLOCKS OF DOUBLE WORDS
+                       389     ; VALUES ARE IN HEX
+                       390     ; MEMORY SIZE INPUT VALUE IS # OF DOUBLE WORDS DISPLAYED
+                       391     ; Ex:   ######## ########
+                       392     ;------------------------------------
+                       393
+                       394     DOUBLE_WORD:
+0197 7852              395             MOV     R0, #INPUT_MEM_SIZE; LOAD MEMORY SIZE RAM LOCATION
+0199 E6                396             MOV     A, @R0          ; LOAD INPUT MEMORY SIZE FROM RAM
+019A FF                397             MOV     R7, A           ; HOLD INPUT MEMORY SIZE VALUE IN R7
+019B 1F                398             DEC     R7              ; DECREMENT MEMORY SIZE COUNTER
+019C 7850              399             MOV     R0, #INPUT_MEM_ADDR; LOAD MEMORY ADDRESS RAM LOCATION
+019E E6                400             MOV     A, @R0          ; LOAD INPUT MEMORY ADDRESS
+019F F9                401             MOV     R1, A           ; INPUT MEMORY ADDRESS POINTER
+                       402
+                       403     DOUBLE_WORD_LOOP0:
+01A0 7404              404             MOV     A, #04H         ; LOAD LOOP COUNTER
+                       405
+                       406     DOUBLE_WORD_LOOP:
+                       407
+01A2 C0E0              408             PUSH    A               ; PUSH LOOP COUNTER ONTO THE STACK
+01A4 E7                409             MOV     A, @R1          ; LOAD DATA AT INPUT MEMORY ADDRESS
+01A5 F5F0              410             MOV     B, A            ; HOLD DATA IN REG B
+01A7 C0F0              411             PUSH    B               ; PUSH DATA ONTO THE STACK
+01A9 C4                412             SWAP    A               ; SWAP NIBBLES
+01AA 540F              413             ANL     A, #0FH         ; MASK LOWER NIBBLE
+01AC 513A              414             ACALL   INPUT_TO_ASCII  ; CONVERT TO ASCII
+01AE 71AF              415             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+01B0 D0F0              416             POP     B               ; RESTORE DATA FROM STACK
+01B2 E5F0              417             MOV     A, B            ; RESTORE DATA
+01B4 540F              418             ANL     A, #0FH         ; MASK LOWER NIBBLE
+01B6 513A              419             ACALL   INPUT_TO_ASCII  ; CONVERT TO ASCII
+01B8 71AF              420             ACALL   LCD_CHAR        ; WRITE ASCII TO LCD
+01BA D0E0              421             POP     A               ; RESTORE LOOP COUNTER
+01BC 14                422             DEC     A               ; DECREMENT LOOP COUNTER
+01BD 6004              423             JZ      DOUBLE_WORD_LOOP1; DECREMENT LOOP COUNTER
+01BF 09                424             INC     R1              ; INCREMENT MEMORY ADDRESS
+01C0 0201A2            425             LJMP    DOUBLE_WORD_LOOP
+                       426
+                       427     DOUBLE_WORD_LOOP1:
+01C3 71B2              428             ACALL   LCD_2NDLINE     ; MOVE LCD CURSOR TO 2ND LINE
+01C5 90047B            429             MOV     DPTR, #SCROLL_PAGE
+01C8 71B7              430             ACALL   LCD_STRING      ; WRITE "0. NEXT, 1. BACK"
+01CA 0201CD            431             LJMP    SCROLL          ; JUMP TO SCROLL FUNCTION
+                       432
+                       433
+                       434
+                       435
+                       436
+                       437     SCROLL:
+01CD 51D5              438             ACALL   KEYPAD_READ     ; READ INPUT VALUE FROM KEYPAD
+                       439
+01CF F5F0              440             MOV     B, A            ; HOLD INPUT VALUE
+01D1 C3                441             CLR     C               ; CLEAR CARRY FLAG
+01D2 9400              442             SUBB    A, #00H         ; CHECK IF '0' KEY WAS PRESSED
+01D4 600C              443             JZ      SCROLL_NEXT     ; IF '0' PRESSED, SCROLL TO NEXT PAGE
+                       444
+01D6 E5F0              445             MOV     A, B            ; RESTORE INPUT VALUE
+01D8 C3                446             CLR     C               ; CLEAR CARRY FLAG
+01D9 9401              447             SUBB    A, #01H         ; CHECK IF '1' KEY WAS PRESSED
+01DB 6015              448             JZ      SCROLL_BACK     ; IF '1' PRESSED, SCROLL BACK 1 PAGE
+                       449
+01DD 1115              450             ACALL   INVALID         ; NEITHER '0' NOR '1' PRESSED. DISPLAY 'INVALID' MESSAGE
+01DF 0201CD            451             LJMP    SCROLL          ; CHECK FOR SCROLL INPUTS AGAIN
+                       452
+                       453     SCROLL_NEXT:
+01E2 EF                454             MOV     A, R7           ; RESTORE MEMORY SIZE COUNTER
+01E3 6045              455             JZ      SCROLL_END      ; END OF DATA
+01E5 09                456             INC     R1              ; INCREMENT MEMORY ADDRESS
+01E6 1F                457             DEC     R7              ; DECREMENT BLOCK SIZE
+01E7 E9                458             MOV     A, R1           ; HOLD RAM POINTER IN ACCUMULATOR
+01E8 C0E0              459             PUSH    A
+01EA 71A6              460             ACALL   LCD_CLEAR
+01EC D0E0              461             POP     A
+01EE 11D9              462             ACALL   MEMORY_ADDRESS_WRITE2; WRITE MEMORY ADDRESS TO LCD
+01F0 3149              463             ACALL   SCROLL_NEXT_DATA_TYPE
+                       464
+                       465
+                       466     SCROLL_BACK:
+01F2 EF                467             MOV     A, R7           ; RESTORE MEMORY SIZE COUNTER
+01F3 2401              468             ADD     A, #01H
+01F5 C3                469             CLR     C               ; CLEAR CARRY FLAG
+01F6 9552              470             SUBB    A, 52H          ; CHECK IF BACK AT STARTING MEM ADDRESS
+01F8 6030              471             JZ      SCROLL_END      ; END OF DATA
+01FA 7451              472             MOV     A, #INPUT_DATA_TYPE
+01FC F8                473             MOV     R0, A
+01FD E6                474             MOV     A, @R0
+                       475
+01FE F5F0              476             MOV     B, A
+0200 C3                477             CLR     C
+0201 9401              478             SUBB    A, #01H
+0203 7004              479             JNZ     SCROLL_BACK_1
+0205 19                480             DEC     R1
+0206 02021E            481             LJMP    SCROLL_BACK_3
+                       482
+                       483     SCROLL_BACK_1:
+0209 E5F0              484             MOV     A, B            ; RESTORE DATA TYPE
+020B C3                485             CLR     C
+020C 9402              486             SUBB    A, #02H
+020E 7006              487             JNZ     SCROLL_BACK_2
+0210 19                488             DEC     R1              ; DECREMENT MEMORY ADDRESS
+0211 19                489             DEC     R1
+0212 19                490             DEC     R1
+0213 02021E            491             LJMP    SCROLL_BACK_3
+                       492
+                       493     SCROLL_BACK_2:
+0216 C3                494             CLR     C
+0217 19                495             DEC     R1
+0218 19                496             DEC     R1
+0219 19                497             DEC     R1
+021A 19                498             DEC     R1
+021B 19                499             DEC     R1
+021C 19                500             DEC     R1
+021D 19                501             DEC     R1
+                       502
+                       503     SCROLL_BACK_3:
+021E 0F                504             INC     R7              ; INCREMENT BLOCK SIZE
+021F E9                505             MOV     A, R1           ; HOLD RAM POINTER IN ACCUMULATOR
+0220 C0E0              506             PUSH    A
+0222 71A6              507             ACALL   LCD_CLEAR
+0224 D0E0              508             POP     A
+0226 11D9              509             ACALL   MEMORY_ADDRESS_WRITE2   ; WRITE MEMORY ADDRESS TO LCD
+0228 3131              510             ACALL   SCROLL_BACK_DATA_TYPE
+                       511
+                       512
+                       513     SCROLL_END:
+022A 90048C            514             MOV     DPTR, #SCROLL_END1
+022D 71A6              515             ACALL   LCD_CLEAR       ; CLEAR LCD
+022F 71B7              516             ACALL   LCD_STRING      ; WRITE "END OF DATA." ON LCD
+                       517             ; DELAY TO KEEP MESSAGE ON SCREEN FOR ~3 SECONDS
+0231 71A6              518             ACALL   LCD_CLEAR
+0233 11D4              519             ACALL   MEMORY_ADDRESS_WRITE1
+0235 11F4              520             ACALL   DATA_WRITE      ; RESTART DATA DISPLAY FROM STARTING MEM ADDRESS
+                       521
+                       522     DONE:
+0237 020237            523             LJMP    DONE
+                       524
+                       525
+                       526
+                       527     ;---------------------------------------------------------------------
+                       528     ;--------------------------- D-DUMP END ------------------------------
+                       529     ;*********************************************************************
+                       530
+                       531
+                       532
+                       533     ;*********************************************************************
+                       534     ;---------------------------------------------------------------------
+                       535     ;--------------------------- INPUT TO ASCII --------------------------
+                       536     ;---------------------------------------------------------------------
+                       537     ;---------------------------------------------------------------------
+                       538     ; CONVERTS THE LOWER NIBBLE OF THE ACCUMULATOR FROM HEX TO ASCII
+                       539     ; RETURNS THE ASCII VALUE IN THE ACCUMULATOR
+                       540
+                       541     INPUT_TO_ASCII:
+023A F5F0              542             MOV     B, A            ; HOLD INPUT VALUE IN REGISTER B
+023C C3                543             CLR     C               ; CLEAR CARRY FLAG
+023D 9400              544             SUBB    A, #00H
+023F 7003              545             JNZ     VALUE1          ; CHECK IF INPUT VALUE = 0. IF NOT, CHECK IF = 1
+0241 7430              546             MOV     A, #30H         ; IF = 0, LOAD ASCII VALUE IN ACCUMULATOR
+0243 22                547             RET
+                       548
+                       549     VALUE1:
+0244 E5F0              550             MOV     A, B
+0246 C3                551             CLR     C
+0247 9401              552             SUBB    A, #01H
+0249 7003              553             JNZ     VALUE2
+024B 7431              554             MOV     A, #31H
+024D 22                555             RET
+                       556
+                       557     VALUE2:
+024E E5F0              558             MOV     A, B
+0250 C3                559             CLR     C
+0251 9402              560             SUBB    A, #02H
+0253 7003              561             JNZ     VALUE3
+0255 7432              562             MOV     A, #32H
+0257 22                563             RET
+                       564
+                       565     VALUE3:
+0258 E5F0              566             MOV     A, B
+025A C3                567             CLR     C
+025B 9403              568             SUBB    A, #03H
+025D 7003              569             JNZ     VALUE4
+025F 7433              570             MOV     A, #33H
+0261 22                571             RET
+                       572
+                       573     VALUE4:
+0262 E5F0              574             MOV     A, B
+0264 C3                575             CLR     C
+0265 9404              576             SUBB    A, #04H
+0267 7003              577             JNZ     VALUE5
+0269 7434              578             MOV     A, #34H
+026B 22                579             RET
+                       580
+                       581     VALUE5:
+026C E5F0              582             MOV     A, B
+026E C3                583             CLR     C
+026F 9405              584             SUBB    A, #05H
+0271 7003              585             JNZ     VALUE6
+0273 7435              586             MOV     A, #35H
+0275 22                587             RET
+                       588
+                       589     VALUE6:
+0276 E5F0              590             MOV     A, B
+0278 C3                591             CLR     C
+0279 9406              592             SUBB    A, #06H
+027B 7003              593             JNZ     VALUE7
+027D 7436              594             MOV     A, #36H
+027F 22                595             RET
+                       596
+                       597     VALUE7:
+0280 E5F0              598             MOV     A, B
+0282 C3                599             CLR     C
+0283 9407              600             SUBB    A, #07H
+0285 7003              601             JNZ     VALUE8
+0287 7437              602             MOV     A, #37H
+0289 22                603             RET
+                       604
+                       605     VALUE8:
+028A E5F0              606             MOV     A, B
+028C C3                607             CLR     C
+028D 9408              608             SUBB    A, #08H
+028F 7003              609             JNZ     VALUE9
+0291 7438              610             MOV     A, #38H
+0293 22                611             RET
+                       612
+                       613     VALUE9:
+0294 E5F0              614             MOV     A, B
+0296 C3                615             CLR     C
+0297 9409              616             SUBB    A, #09H
+0299 7003              617             JNZ     VALUE10
+029B 7439              618             MOV     A, #39H
+029D 22                619             RET
+                       620
+                       621     VALUE10:
+029E E5F0              622             MOV     A, B
+02A0 C3                623             CLR     C
+02A1 940A              624             SUBB    A, #0AH
+02A3 7003              625             JNZ     VALUE11
+02A5 7441              626             MOV     A, #41H
+02A7 22                627             RET
+                       628
+                       629     VALUE11:
+02A8 E5F0              630             MOV     A, B
+02AA C3                631             CLR     C
+02AB 940B              632             SUBB    A, #0BH
+02AD 7003              633             JNZ     VALUE12
+02AF 7442              634             MOV     A, #42H
+02B1 22                635             RET
+                       636
+                       637     VALUE12:
+02B2 E5F0              638             MOV     A, B
+02B4 C3                639             CLR     C
+02B5 940C              640             SUBB    A, #0CH
+02B7 7003              641             JNZ     VALUE13
+02B9 7443              642             MOV     A, #43H
+02BB 22                643             RET
+                       644
+                       645     VALUE13:
+02BC E5F0              646             MOV     A, B
+02BE C3                647             CLR     C
+02BF 940D              648             SUBB    A, #0DH
+02C1 7003              649             JNZ     VALUE14
+02C3 7444              650             MOV     A, #44H
+02C5 22                651             RET
+                       652
+                       653     VALUE14:
+02C6 E5F0              654             MOV     A, B
+02C8 C3                655             CLR     C
+02C9 940E              656             SUBB    A, #0EH
+02CB 7003              657             JNZ     VALUE15
+02CD 7445              658             MOV     A, #45H
+02CF 22                659             RET
+                       660
+                       661     VALUE15:
+02D0 E5F0              662             MOV     A, B
+02D2 7446              663             MOV     A, #46H
+02D4 22                664             RET
+                       665
+                       666     ;---------------------------------------------------------------------
+                       667     ;--------------------------- INPUT TO ASCII END ----------------------
+                       668     ;*********************************************************************
+                       669
+                       670
+                       671
+                       672     ;*********************************************************************
+                       673     ;---------------------------------------------------------------------
+                       674     ;--------------------------- MATRIX KEYPAD READ ----------------------
+                       675     ;---------------------------------------------------------------------
+                       676     ;---------------------------------------------------------------------
+                       677     ; READS A 4 x 4 MATRIX KEYPAD FOR WHICH KEY IS PRESSED
+                       678     ; RETURNS THE VALUE OF THE PRESSED KEY VIA THE ACCUMULATOR
+                       679     ; PROCEDURE WILL NOT RETURN UNTIL A KEY IS PRESSED
+                       680
+                       681     ;   |1| |2| |3| |A|  ---- ROW 1 ------> P0.0
+                       682     ;   |4| |5| |6| |B|  ---- ROW 2 ------> P0.1
+                       683     ;   |7| |8| |9| |C|  ---- ROW 3 ------> P0.2
+                       684     ;   |E| |0| |F| |D|  ---- ROW 4 ------> P0.3
+                       685
+                       686     ;    |   |   |   |
+                       687     ;    |   |   |    ------- COLUMN 4 ---> P0.7
+                       688     ;    |   |    ----------- COLUMN 3 ---> P0.6
+                       689     ;    |    --------------- COLUMN 2 ---> P0.5
+                       690     ;     ------------------- COLUMN 1 ---> P0.4
+                       691
+                       692
+                       693     KEYPAD_READ:
+02D5 7580FF            694             MOV     P0, #0FFH       ; SET ALL BITS ON PORT 1 HIGH
+02D8 C280              695             CLR     P0.0            ; CLEAR PORT 0, BIT 0 (ROW 1)
+02DA 208403            696             JB      P0.4, NEXT1     ; CHECKS STATE OF COLUMN 1. JUMP IF HIGH
+02DD 7401              697             MOV     A, #01H         ; COLUMN 1 IS LOW. KEY '1' IS PRESSED
+02DF 22                698             RET
+                       699
+                       700     NEXT1:
+02E0 208503            701             JB      P0.5, NEXT2     ; CHECK STATE OF COLUMN 2. JUMP IF HIGH
+02E3 7402              702             MOV     A, #02H         ; COLUMN 2 IS LOW. KEY '2' IS PRESSED
+02E5 22                703             RET
+                       704
+                       705     NEXT2:
+02E6 208603            706             JB      P0.6, NEXT3     ; CHECK STATE OF COLUMN 3. JUMP IF HIGH
+02E9 7403              707             MOV     A, #03H         ; COLUMN 3 IS LOW. KEY '3' IS PRESSED
+02EB 22                708             RET
+                       709
+                       710     NEXT3:
+02EC 208703            711             JB      P0.7, NEXT4     ; CHECK STATE OF COLUMN 4. JUMP IF HIGH
+02EF 740A              712             MOV     A, #0AH         ; COLUMN 4 IS LOW. KEY 'A' IS PRESSED
+02F1 22                713             RET
+                       714
+                       715     NEXT4:
+02F2 D280              716             SETB    P0.0            ; SET PORT 0, BIT 0 (ROW 1)
+02F4 C281              717             CLR     P0.1            ; CLEAR PORT 0, BIT 1 (ROW 2)
+02F6 208403            718             JB      P0.4, NEXT5     ; CHECK STATE OF COLUMN 1. JUMP IF HIGH
+02F9 7404              719             MOV     A, #04H         ; COLUMN 1 IS LOW. KEY '4' IS PRESSED
+02FB 22                720             RET
+                       721
+                       722     NEXT5:
+02FC 208503            723             JB      P0.5, NEXT6     ; CHECK STATE OF COLUMN 2. JUMP IF HIGH
+02FF 7405              724             MOV     A, #05H         ; COLUMN 2 IS LOW. KEY '5' IS PRESSED
+0301 22                725             RET
+                       726
+                       727     NEXT6:
+0302 208603            728             JB      P0.6, NEXT7     ; CHECK STATE OF COLUMN 3. JUMP IF HIGH
+0305 7406              729             MOV     A, #06H         ; COLUMN 3 IS LOW. KEY '6' IS PRESSED
+0307 22                730             RET
+                       731
+                       732     NEXT7:
+0308 208703            733             JB      P0.7, NEXT8     ; CHECK STATE OF COLUMN 4. JUMP IF HIGH
+030B 740B              734             MOV     A, #0BH         ; COLUMN 4 IS LOW. KEY 'B' IS PRESSED
+030D 22                735             RET
+                       736
+                       737     NEXT8:
+030E D281              738             SETB    P0.1            ; SET PORT 0, BIT 1 (ROW 2)
+0310 C282              739             CLR     P0.2            ; CLEAR PORT 0, BIT 2 (ROW 3)
+0312 208403            740             JB      P0.4, NEXT9     ; CHECK STATE OF COLUMN 1. JUMP IF HIGH
+0315 7407              741             MOV     A, #07H         ; COLUMN 1 IS LOW. KEY '7' IS PRESSED
+0317 22                742             RET
+                       743
+                       744     NEXT9:
+0318 208503            745             JB      P0.5, NEXT10    ; CHECK STATE OF COLUMN 2. JUMP IF HIGH
+031B 7408              746             MOV     A, #08H         ; COLUMN 2 IS LOW. KEY '8' IS PRESSED
+031D 22                747             RET
+                       748
+                       749     NEXT10:
+031E 208603            750             JB      P0.6, NEXT11    ; CHECK STATE OF COLUMN 3. JUMP IF HIGH
+0321 7409              751             MOV     A, #09H         ; COLUMN 3 IS LOW. KEY '9' IS PRESSED
+0323 22                752             RET
+                       753
+                       754     NEXT11:
+0324 208703            755             JB      P0.7, NEXT12    ; CHECK STATE OF COLUMN 4. JUMP IF HIGH
+0327 740C              756             MOV     A, #0CH         ; COLUMN 4 IS LOW. KEY 'C' IS PRESSED
+0329 22                757             RET
+                       758
+                       759     NEXT12:
+032A D282              760             SETB    P0.2            ; SET PORT 0, BIT 2 (ROW 3)
+032C C283              761             CLR     P0.3            ; CLEAR PORT 0, BIT 3 (ROW 4)
+032E 208403            762             JB      P0.4, NEXT13    ; CHECK STATE OF COLUMN 1. JUMP IF HIGH
+0331 740E              763             MOV     A, #0EH         ; COLUMN 1 IS LOW. KEY 'E' IS PRESSED
+0333 22                764             RET
+                       765
+                       766     NEXT13:
+0334 208503            767             JB      P0.5, NEXT14    ; CHECK STATE OF COLUMN 2. JUMP IF HIGH
+0337 7400              768             MOV     A, #00H         ; COLUMN 2 IS LOW. KEY '0' IS PRESSED
+0339 22                769             RET
+                       770
+                       771     NEXT14:
+033A 208603            772             JB      P0.6, NEXT15    ; CHECK STATE OF COLUMN 3. JUMP IF HIGH
+033D 740F              773             MOV     A, #0FH         ; COLUMN 3 IS LOW. KEY 'F' IS PRESSED
+033F 22                774             RET
+                       775
+                       776     NEXT15:
+0340 208792            777             JB      P0.7, KEYPAD_READ       ; CHECK STATE OF COLUMN 4. JUMP IF HIGH
+0343 740D              778             MOV     A, #0DH         ; COLUMN 4 IS LOW. KEY 'D' IS PRESSED
+0345 22                779             RET
+                       780
+                       781     ;---------------------------------------------------------------------
+                       782     ;--------------------------- MATRIX KEYPAD READ END ------------------
+                       783     ;*********************************************************************
+                       784
+                       785
+                       786
+                       787
+                       788     ;*********************************************************************
+                       789     ;---------------------------------------------------------------------
+                       790     ;--------------------------- LCD DRIVER ------------------------------
+                       791     ;---------------------------------------------------------------------
+                       792     ;---------------------------------------------------------------------
+                       793     ; LCD_INIT ------- INITIALIZES LCD (16 x 2)
+                       794     ; LCD_2NDLINE ---- MOVES LCD CURSOR TO 2ND LINE, 1ST COLUMN
+                       795     ; LCD_CHAR ------- WRITES CHARACTER HELD IN THE ACCUMULATOR TO LCD
+                       796     ; LCD_CLEAR ------ CLEARS LCD
+                       797     ; LCD_STRING ----- MOVE STRING TO DPTR 1ST. WRITES STRING ON LCD
+                       798     ; DELAY ---------- 1ms DELAY
+                       799     ; DELAY_ms ------- LOAD (n)ms INTO ACCUM. CALL FOR (n)ms DELAY
+                       800     ; LCD_CMD -------- ** NOT USED OUTSIDE OF LCD DRIVER **
+                       801     ; LCD_DATA ------- ** NOT USED OUTSIDE OF LCD DRIVER **
+                       802
+                       803     ; RS ---> P3.0
+                       804     ; RW ---> P3.1
+                       805     ; EN ---> P3.2
+                       806
+                       807     ; D0 ---> P1.0
+                       808     ; D1 ---> P1.1
+                       809     ; D2 ---> P1.2
+                       810     ; D3 ---> P1.3
+                       811     ; D4 ---> P1.4
+                       812     ; D5 ---> P1.5
+                       813     ; D6 ---> P1.6
+                       814     ; D7 ---> P1.7
+                       815
+                       816
+                       817     ;---------------------(n)ms DELAY PROCEDURE---------------------------
+                       818     ; CALLS DELAY PROCEDURE n # OF TIMES. n = VALUE LOADED INTO REG A
+                       819
+                       820     DELAY_ms:
+0346 FD                821             MOV     R5, A           ; REGISTER A HOLDS # OF ms DELAY NEEDED
+                       822     JUMP:
+0347 714C              823             ACALL   DELAY           ; 1ms DELAY
+0349 DDFC              824             DJNZ    R5, JUMP        ; CONITUALLY DECREMENT R5 UNTIL 0
+034B 22                825             RET
+                       826
+                       827     ;---------------------1ms DELAY PROCEDURE-----------------------------
+                       828     ; DECREMENTS R4 FROM 255 TO 0 THEN DECREMENTS R3.
+                       829     ; CONTINUES LOOPS UNTIL R3 IS 0. CREATES 12750 CLOCKS ~1ms.
+                       830
+                       831     DELAY:
+034C 7B01              832             MOV     R3, #1          ; LOAD 50 DEC INTO R3
+                       833     HERE:
+034E 7C01              834             MOV     R4, #1          ; LOAD 255 DEC INTO R4
+                       835     HERE2:
+0350 DCFE              836             DJNZ    R4, HERE2       ; CONTINUALLY DECREMENT R4 UNTIL 0
+0352 DBFA              837             DJNZ    R3, HERE        ; DECREMENTS R3 UNTIL 0
+0354 22                838             RET
+                       839
+                       840     ;---------------------LCD INITIALIZE PROCEDURE------------------------
+                       841     ; INITIALIZES THE LCD IN ACCORDANCE TO THE LCD DATA SHEET
+                       842
+                       843     LCD_INIT:
+0355 740F              844             MOV     A, #15          ; 15ms DELAY
+0357 7146              845             ACALL   DELAY_ms
+                       846
+0359 7400              847             MOV     A, #000H
+035B F590              848             MOV     P1, A           ; SET PORT 1 AS OUTPUT
+035D F5B0              849             MOV     P3, A           ; SET PORT 3 AS OUTPUT
+                       850
+035F 7430              851             MOV     A, #30H         ; FUNCTION SET COMMAND
+0361 7195              852             ACALL   LCD_CMD
+                       853
+0363 7405              854             MOV     A, #5           ; 5ms DELAY
+0365 7146              855             ACALL   DELAY_ms
+                       856
+0367 7430              857             MOV     A, #30H         ; FUNCTION SET COMMAND
+0369 7195              858             ACALL   LCD_CMD
+                       859
+036B 714C              860             ACALL   DELAY           ; 1ms DELAY
+                       861
+036D 7430              862             MOV     A, #30H         ; FUNCTION SET COMMAND
+036F 7195              863             ACALL   LCD_CMD
+                       864
+0371 743C              865             MOV     A, #3CH         ; FUNCTION SET COMMAND
+0373 7195              866             ACALL   LCD_CMD         ; 8-BIT INTERFACE
+                       867
+0375 7408              868             MOV     A, #08H         ; DISPLAY OFF
+0377 7195              869             ACALL   LCD_CMD
+                       870
+0379 7406              871             MOV     A, #06H         ; ENTRY MODE SET
+037B 7195              872             ACALL   LCD_CMD
+                       873
+037D 740F              874             MOV     A, #0FH         ; DISPLAY ON
+037F 7195              875             ACALL   LCD_CMD
+                       876
+0381 71A6              877             ACALL   LCD_CLEAR       ; CLEAR DISPLAY
+                       878
+0383 22                879             RET
+                       880
+                       881     ;---------------------LCD DATA PROCEDURE------------------------------
+                       882     ; TRANSFERS DATA TO THE LCD
+                       883
+                       884     LCD_DATA:
+0384 D2B0              885             SETB    P3.0            ; RS = 1
+0386 C2B1              886             CLR     P3.1            ; RW = 0
+0388 714C              887             ACALL   DELAY           ; 1ms DELAY
+038A D2B2              888             SETB    P3.2            ; EN = 1
+038C 714C              889             ACALL   DELAY           ; 1ms DELAY
+038E F590              890             MOV     P1, A           ; REGISTER A -> PORT 1
+0390 714C              891             ACALL   DELAY           ; 1ms DELAY
+0392 C2B2              892             CLR     P3.2            ; EN = 0
+0394 22                893             RET
+                       894
+                       895     ;---------------------LCD COMMAND PROCEDURE---------------------------
+                       896     ; USED TO EXECUTE ALL COMMANDS ON THE LCD
+                       897
+                       898     LCD_CMD:
+0395 C2B0              899             CLR     P3.0            ; RS = 0
+0397 C2B1              900             CLR     P3.1            ; RW = 0
+0399 714C              901             ACALL   DELAY           ; 1ms DELAY
+039B D2B2              902             SETB    P3.2            ; EN = 1
+039D 714C              903             ACALL   DELAY           ; 1ms DELAY
+039F F590              904             MOV     P1, A           ; REGISTER A -> PORT 1
+03A1 714C              905             ACALL   DELAY           ; 1ms DELAY
+03A3 C2B2              906             CLR     P3.2            ; EN = 0
+03A5 22                907             RET
+                       908
+                       909     ;---------------------LCD CLEAR PROCEDURE-----------------------------
+                       910     ; CLEARS THE LCD
+                       911
+                       912     LCD_CLEAR:
+03A6 7401              913             MOV     A, #01H
+03A8 7195              914             ACALL   LCD_CMD
+03AA 7480              915             MOV     A, #80H
+03AC 7195              916             ACALL   LCD_CMD
+03AE 22                917             RET
+                       918
+                       919     ;---------------------LCD CHAR PROCEDURE------------------------------
+                       920     ; WRITE A SINGLE CHARACTER ON THE LCD
+                       921
+                       922     LCD_CHAR:
+03AF 7184              923             ACALL   LCD_DATA
+03B1 22                924             RET
+                       925
+                       926     ;---------------------LCD 2ND LINE PROCEDURE--------------------------
+                       927     ; MOVES CURSORS TO THE SECOND LINE OF THE LCD
+                       928
+                       929     LCD_2NDLINE:
+03B2 74C0              930             MOV     A, #0C0H
+03B4 7195              931             ACALL   LCD_CMD
+03B6 22                932             RET
+                       933
+                       934     ;---------------------LCD STRING PROCEDURE----------------------------
+                       935     ; WRITES A STRING ON THE LCD
+                       936
+                       937     LCD_STRING:
+                       938     L3:
+03B7 E4                939             CLR     A
+03B8 93                940             MOVC    A, @A+DPTR
+03B9 7184              941             ACALL   LCD_DATA
+03BB 714C              942             ACALL   DELAY
+03BD A3                943             INC     DPTR
+03BE 6002              944             JZ      L4
+03C0 80F5              945             SJMP    L3
+                       946     L4:
+03C2 22                947             RET
+                       948
+                       949     ;---------------------------------------------------------------------
+                       950     ;--------------------------- LCD DRIVER END --------------------------
+                       951     ;*********************************************************************
+                       952
+                       953
+                       954
+                       955     ;*********************************************************************
+                       956     ;---------------------------------------------------------------------
+                       957     ;--------------------------- STRINGS ---------------------------------
+                       958     ;---------------------------------------------------------------------
+                       959     ;---------------------------------------------------------------------
+                       960
+                       961             ORG     400H
+                       962
+                       963     COURSE:
+0400 4543454E34        964             DB      'ECEN4330', 0
+     33333000
+                       965
+                       966     MYNAME:
+0409 432E572E42        967             DB      'C.W.B.', 0
+     2E00
+                       968
+                       969     D_DUMP:
+0410 442D44554D        970             DB      'D-DUMP', 0
+     5000
+                       971
+                       972     BLOCK_SIZE_0:
+0417 454E544552        973             DB      'ENTER MEM ADDR:', 0
+     204D454D20
+     414444523A
+     00
+                       974
+                       975     BLOCK_SIZE_1:
+0427 53454C4543        976             DB      'SELECT DATA', 0
+     5420444154
+     4100
+                       977
+                       978     BLOCK_SIZE_1B:
+0433 545950453A        979             DB      'TYPE:', 0
+     00
+                       980
+                       981     BLOCK_SIZE_2:
+0439 312E204259        982             DB      '1. BYTE, 2. WORD', 0
+     54452C2032
+     2E20574F52
+     4400
+                       983
+                       984     BLOCK_SIZE_3:
+044A 332E20444F        985             DB      '3. DOUBLE WORD', 0
+     55424C4520
+     574F524400
+                       986
+                       987     INVALID_INPUT:
+0459 494E56414C        988             DB      'INVALID INPUT.', 0
+     494420494E
+     5055542E00
+                       989
+                       990     DATA_SIZE:
+0468 454E544552        991             DB      'ENTER DATA SIZE:', 0
+     2044415441
+     2053495A45
+     3A00
+                       992
+                       993     SEMI_COLON:
+0479 3A00              994             DB      ':', 0
+                       995
+                       996     SCROLL_PAGE:
+047B 302E204E45        997             DB      '0. NEXT, 1. BACK', 0
+     58542C2031
+     2E20424143
+     4B00
+                       998
+                       999     SCROLL_END1:
+048C 454E44204F       1000             DB      'END OF DATA.', 0
+     4620444154
+     412E00
+                      1001
+                      1002             END
+ASSEMBLY COMPLETE, NO ERRORS FOUND, NO WARNINGS
+
+
+SYMBOL TABLE:
+??MCU_8051_IDE . . . . . . . . . . .  N  NUMB  8051H  NOT USED
+??VERSION. . . . . . . . . . . . . .  N  NUMB  0149H  NOT USED
+AC . . . . . . . . . . . . . . . . .  B  ADDR  00D6H  NOT USED
+ACC. . . . . . . . . . . . . . . . .  D  ADDR  00E0H  NOT USED
+ACSR . . . . . . . . . . . . . . . .  D  ADDR  0097H  NOT USED
+ADCF . . . . . . . . . . . . . . . .  D  ADDR  00F6H  NOT USED
+ADCLK. . . . . . . . . . . . . . . .  D  ADDR  00F2H  NOT USED
+ADCON. . . . . . . . . . . . . . . .  D  ADDR  00F3H  NOT USED
+ADDH . . . . . . . . . . . . . . . .  D  ADDR  00F5H  NOT USED
+ADDL . . . . . . . . . . . . . . . .  D  ADDR  00F4H  NOT USED
+AUXR . . . . . . . . . . . . . . . .  D  ADDR  008EH  NOT USED
+AUXR1. . . . . . . . . . . . . . . .  D  ADDR  00A2H  NOT USED
+B. . . . . . . . . . . . . . . . . .  D  ADDR  00F0H
+BDRCON . . . . . . . . . . . . . . .  D  ADDR  009BH  NOT USED
+BDRCON_1 . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
+BLOCK_SIZE_0 . . . . . . . . . . . .  C  ADDR  0417H
+BLOCK_SIZE_1 . . . . . . . . . . . .  C  ADDR  0427H
+BLOCK_SIZE_1B. . . . . . . . . . . .  C  ADDR  0433H
+BLOCK_SIZE_2 . . . . . . . . . . . .  C  ADDR  0439H
+BLOCK_SIZE_3 . . . . . . . . . . . .  C  ADDR  044AH
+BLOCK_SIZE_INPUT . . . . . . . . . .  C  ADDR  00A5H
+BRL. . . . . . . . . . . . . . . . .  D  ADDR  009AH  NOT USED
+BYTE_DATA. . . . . . . . . . . . . .  C  ADDR  0108H
+BYTE_LOOP. . . . . . . . . . . . . .  C  ADDR  0111H
+CCAP0H . . . . . . . . . . . . . . .  D  ADDR  00FAH  NOT USED
+CCAP0L . . . . . . . . . . . . . . .  D  ADDR  00EAH  NOT USED
+CCAP1H . . . . . . . . . . . . . . .  D  ADDR  00FBH  NOT USED
+CCAP1L . . . . . . . . . . . . . . .  D  ADDR  00EBH  NOT USED
+CCAP2H . . . . . . . . . . . . . . .  D  ADDR  00FCH  NOT USED
+CCAP3H . . . . . . . . . . . . . . .  D  ADDR  00FDH  NOT USED
+CCAP4H . . . . . . . . . . . . . . .  D  ADDR  00FEH  NOT USED
+CCAPL2H. . . . . . . . . . . . . . .  D  ADDR  00FCH  NOT USED
+CCAPL2L. . . . . . . . . . . . . . .  D  ADDR  00ECH  NOT USED
+CCAPL3H. . . . . . . . . . . . . . .  D  ADDR  00FDH  NOT USED
+CCAPL3L. . . . . . . . . . . . . . .  D  ADDR  00EDH  NOT USED
+CCAPL4H. . . . . . . . . . . . . . .  D  ADDR  00FEH  NOT USED
+CCAPL4L. . . . . . . . . . . . . . .  D  ADDR  00EEH  NOT USED
+CCAPM0 . . . . . . . . . . . . . . .  D  ADDR  00DAH  NOT USED
+CCAPM1 . . . . . . . . . . . . . . .  D  ADDR  00DBH  NOT USED
+CCAPM2 . . . . . . . . . . . . . . .  D  ADDR  00DCH  NOT USED
+CCAPM3 . . . . . . . . . . . . . . .  D  ADDR  00DDH  NOT USED
+CCAPM4 . . . . . . . . . . . . . . .  D  ADDR  00DEH  NOT USED
+CCF0 . . . . . . . . . . . . . . . .  B  ADDR  00D8H  NOT USED
+CCF1 . . . . . . . . . . . . . . . .  B  ADDR  00D9H  NOT USED
+CCF2 . . . . . . . . . . . . . . . .  B  ADDR  00DAH  NOT USED
+CCF3 . . . . . . . . . . . . . . . .  B  ADDR  00DBH  NOT USED
+CCF4 . . . . . . . . . . . . . . . .  B  ADDR  00DCH  NOT USED
+CCON . . . . . . . . . . . . . . . .  D  ADDR  00D8H  NOT USED
+CFINT. . . . . . . . . . . . . . . .  C  ADDR  0033H  NOT USED
+CH . . . . . . . . . . . . . . . . .  D  ADDR  00F9H  NOT USED
+CKCON. . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CKCON0 . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CKRL . . . . . . . . . . . . . . . .  D  ADDR  0097H  NOT USED
+CKSEL. . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
+CL . . . . . . . . . . . . . . . . .  D  ADDR  00E9H  NOT USED
+CLKREG . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CMOD . . . . . . . . . . . . . . . .  D  ADDR  00D9H  NOT USED
+COURSE . . . . . . . . . . . . . . .  C  ADDR  0400H
+CPRL2. . . . . . . . . . . . . . . .  B  ADDR  00C8H  NOT USED
+CR . . . . . . . . . . . . . . . . .  B  ADDR  00DEH  NOT USED
+CT2. . . . . . . . . . . . . . . . .  B  ADDR  00C9H  NOT USED
+CY . . . . . . . . . . . . . . . . .  B  ADDR  00D7H  NOT USED
+DATA_SIZE. . . . . . . . . . . . . .  C  ADDR  0468H
+DATA_TYPE_CHECK. . . . . . . . . . .  C  ADDR  008AH
+DATA_TYPE_INPUT. . . . . . . . . . .  C  ADDR  006AH
+DATA_WRITE . . . . . . . . . . . . .  C  ADDR  00F4H
+DELAY. . . . . . . . . . . . . . . .  C  ADDR  034CH
+DELAY_MS . . . . . . . . . . . . . .  C  ADDR  0346H
+DONE . . . . . . . . . . . . . . . .  C  ADDR  0237H
+DOUBLE_WORD. . . . . . . . . . . . .  C  ADDR  0197H
+DOUBLE_WORD_LOOP . . . . . . . . . .  C  ADDR  01A2H
+DOUBLE_WORD_LOOP0. . . . . . . . . .  C  ADDR  01A0H
+DOUBLE_WORD_LOOP1. . . . . . . . . .  C  ADDR  01C3H
+DP0H . . . . . . . . . . . . . . . .  D  ADDR  0083H  NOT USED
+DP0L . . . . . . . . . . . . . . . .  D  ADDR  0082H  NOT USED
+DP1H . . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
+DP1L . . . . . . . . . . . . . . . .  D  ADDR  0084H  NOT USED
+DPH. . . . . . . . . . . . . . . . .  D  ADDR  0083H  NOT USED
+DPL. . . . . . . . . . . . . . . . .  D  ADDR  0082H  NOT USED
+DUMP . . . . . . . . . . . . . . . .  C  ADDR  0035H
+D_DUMP . . . . . . . . . . . . . . .  C  ADDR  0410H
+EA . . . . . . . . . . . . . . . . .  B  ADDR  00AFH  NOT USED
+EC . . . . . . . . . . . . . . . . .  B  ADDR  00AEH  NOT USED
+EECON. . . . . . . . . . . . . . . .  D  ADDR  0096H  NOT USED
+ES . . . . . . . . . . . . . . . . .  B  ADDR  00ACH  NOT USED
+ET0. . . . . . . . . . . . . . . . .  B  ADDR  00A9H  NOT USED
+ET1. . . . . . . . . . . . . . . . .  B  ADDR  00ABH  NOT USED
+ET2. . . . . . . . . . . . . . . . .  B  ADDR  00ADH  NOT USED
+EX0. . . . . . . . . . . . . . . . .  B  ADDR  00A8H  NOT USED
+EX1. . . . . . . . . . . . . . . . .  B  ADDR  00AAH  NOT USED
+EXEN2. . . . . . . . . . . . . . . .  B  ADDR  00CBH  NOT USED
+EXF2 . . . . . . . . . . . . . . . .  B  ADDR  00CEH  NOT USED
+EXTI0. . . . . . . . . . . . . . . .  C  ADDR  0003H  NOT USED
+EXTI1. . . . . . . . . . . . . . . .  C  ADDR  0013H  NOT USED
+F0 . . . . . . . . . . . . . . . . .  B  ADDR  00D5H  NOT USED
+FE . . . . . . . . . . . . . . . . .  B  ADDR  009FH  NOT USED
+HERE . . . . . . . . . . . . . . . .  C  ADDR  034EH
+HERE2. . . . . . . . . . . . . . . .  C  ADDR  0350H
+IE . . . . . . . . . . . . . . . . .  D  ADDR  00A8H  NOT USED
+IE0. . . . . . . . . . . . . . . . .  B  ADDR  0089H  NOT USED
+IE1. . . . . . . . . . . . . . . . .  B  ADDR  008BH  NOT USED
+INPUT_DATA_TYPE. . . . . . . . . . .  N  NUMB  0051H
+INPUT_MEM_ADDR . . . . . . . . . . .  N  NUMB  0050H
+INPUT_MEM_SIZE . . . . . . . . . . .  N  NUMB  0052H
+INPUT_TO_ASCII . . . . . . . . . . .  C  ADDR  023AH
+INT0 . . . . . . . . . . . . . . . .  B  ADDR  00B2H  NOT USED
+INT1 . . . . . . . . . . . . . . . .  B  ADDR  00B3H  NOT USED
+INVALID. . . . . . . . . . . . . . .  C  ADDR  0015H
+INVALID_INPUT. . . . . . . . . . . .  C  ADDR  0459H
+IP . . . . . . . . . . . . . . . . .  D  ADDR  00B8H  NOT USED
+IPH. . . . . . . . . . . . . . . . .  D  ADDR  00B7H  NOT USED
+IPH0 . . . . . . . . . . . . . . . .  D  ADDR  00B7H  NOT USED
+IPH1 . . . . . . . . . . . . . . . .  D  ADDR  00B3H  NOT USED
+IPL0 . . . . . . . . . . . . . . . .  D  ADDR  00B8H  NOT USED
+IPL1 . . . . . . . . . . . . . . . .  D  ADDR  00B2H  NOT USED
+IT0. . . . . . . . . . . . . . . . .  B  ADDR  0088H  NOT USED
+IT1. . . . . . . . . . . . . . . . .  B  ADDR  008AH  NOT USED
+JUMP . . . . . . . . . . . . . . . .  C  ADDR  0347H
+KBE. . . . . . . . . . . . . . . . .  D  ADDR  009DH  NOT USED
+KBF. . . . . . . . . . . . . . . . .  D  ADDR  009EH  NOT USED
+KBLS . . . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
+KEYPAD_READ. . . . . . . . . . . . .  C  ADDR  02D5H
+L0 . . . . . . . . . . . . . . . . .  C  ADDR  0002H
+L2 . . . . . . . . . . . . . . . . .  C  ADDR  0013H
+L3 . . . . . . . . . . . . . . . . .  C  ADDR  03B7H
+L4 . . . . . . . . . . . . . . . . .  C  ADDR  03C2H
+L9 . . . . . . . . . . . . . . . . .  C  ADDR  0078H
+LCD_2NDLINE. . . . . . . . . . . . .  C  ADDR  03B2H
+LCD_CHAR . . . . . . . . . . . . . .  C  ADDR  03AFH
+LCD_CLEAR. . . . . . . . . . . . . .  C  ADDR  03A6H
+LCD_CMD. . . . . . . . . . . . . . .  C  ADDR  0395H
+LCD_DATA . . . . . . . . . . . . . .  C  ADDR  0384H
+LCD_INIT . . . . . . . . . . . . . .  C  ADDR  0355H
+LCD_MAIN . . . . . . . . . . . . . .  C  ADDR  001DH
+LCD_STRING . . . . . . . . . . . . .  C  ADDR  03B7H
+MEMORY . . . . . . . . . . . . . . .  C  ADDR  00A0H
+MEMORY_ADDRESS_INPUT . . . . . . . .  C  ADDR  0041H
+MEMORY_ADDRESS_WRITE1. . . . . . . .  C  ADDR  00D4H
+MEMORY_ADDRESS_WRITE2. . . . . . . .  C  ADDR  00D9H
+MYNAME . . . . . . . . . . . . . . .  C  ADDR  0409H
+NEXT1. . . . . . . . . . . . . . . .  C  ADDR  02E0H
+NEXT10 . . . . . . . . . . . . . . .  C  ADDR  031EH
+NEXT11 . . . . . . . . . . . . . . .  C  ADDR  0324H
+NEXT12 . . . . . . . . . . . . . . .  C  ADDR  032AH
+NEXT13 . . . . . . . . . . . . . . .  C  ADDR  0334H
+NEXT14 . . . . . . . . . . . . . . .  C  ADDR  033AH
+NEXT15 . . . . . . . . . . . . . . .  C  ADDR  0340H
+NEXT2. . . . . . . . . . . . . . . .  C  ADDR  02E6H
+NEXT3. . . . . . . . . . . . . . . .  C  ADDR  02ECH
+NEXT4. . . . . . . . . . . . . . . .  C  ADDR  02F2H
+NEXT5. . . . . . . . . . . . . . . .  C  ADDR  02FCH
+NEXT6. . . . . . . . . . . . . . . .  C  ADDR  0302H
+NEXT7. . . . . . . . . . . . . . . .  C  ADDR  0308H
+NEXT8. . . . . . . . . . . . . . . .  C  ADDR  030EH
+NEXT9. . . . . . . . . . . . . . . .  C  ADDR  0318H
+OSCCON . . . . . . . . . . . . . . .  D  ADDR  0086H  NOT USED
+OV . . . . . . . . . . . . . . . . .  B  ADDR  00D2H  NOT USED
+P. . . . . . . . . . . . . . . . . .  B  ADDR  00D0H  NOT USED
+P0 . . . . . . . . . . . . . . . . .  D  ADDR  0080H
+P1 . . . . . . . . . . . . . . . . .  D  ADDR  0090H
+P1M1 . . . . . . . . . . . . . . . .  D  ADDR  00D4H  NOT USED
+P1M2 . . . . . . . . . . . . . . . .  D  ADDR  00E2H  NOT USED
+P2 . . . . . . . . . . . . . . . . .  D  ADDR  00A0H  NOT USED
+P3 . . . . . . . . . . . . . . . . .  D  ADDR  00B0H
+P3M1 . . . . . . . . . . . . . . . .  D  ADDR  00D5H  NOT USED
+P3M2 . . . . . . . . . . . . . . . .  D  ADDR  00E3H  NOT USED
+P4 . . . . . . . . . . . . . . . . .  D  ADDR  00C0H  NOT USED
+P4M1 . . . . . . . . . . . . . . . .  D  ADDR  00D6H  NOT USED
+P4M2 . . . . . . . . . . . . . . . .  D  ADDR  00E4H  NOT USED
+P5 . . . . . . . . . . . . . . . . .  D  ADDR  00E8H  NOT USED
+PC . . . . . . . . . . . . . . . . .  B  ADDR  00BEH  NOT USED
+PCON . . . . . . . . . . . . . . . .  D  ADDR  0087H  NOT USED
+PPCL . . . . . . . . . . . . . . . .  B  ADDR  00BEH  NOT USED
+PS . . . . . . . . . . . . . . . . .  B  ADDR  00BCH  NOT USED
+PSL. . . . . . . . . . . . . . . . .  B  ADDR  00BCH  NOT USED
+PSW. . . . . . . . . . . . . . . . .  D  ADDR  00D0H  NOT USED
+PT0. . . . . . . . . . . . . . . . .  B  ADDR  00B9H  NOT USED
+PT0L . . . . . . . . . . . . . . . .  B  ADDR  00B9H  NOT USED
+PT1. . . . . . . . . . . . . . . . .  B  ADDR  00BBH  NOT USED
+PT1L . . . . . . . . . . . . . . . .  B  ADDR  00BBH  NOT USED
+PT2. . . . . . . . . . . . . . . . .  B  ADDR  00BDH  NOT USED
+PT2L . . . . . . . . . . . . . . . .  B  ADDR  00BDH  NOT USED
+PX0. . . . . . . . . . . . . . . . .  B  ADDR  00B8H  NOT USED
+PX0L . . . . . . . . . . . . . . . .  B  ADDR  00B8H  NOT USED
+PX1. . . . . . . . . . . . . . . . .  B  ADDR  00BAH  NOT USED
+PX1L . . . . . . . . . . . . . . . .  B  ADDR  00BAH  NOT USED
+RB8. . . . . . . . . . . . . . . . .  B  ADDR  009AH  NOT USED
+RCAP2H . . . . . . . . . . . . . . .  D  ADDR  00CBH  NOT USED
+RCAP2L . . . . . . . . . . . . . . .  D  ADDR  00CAH  NOT USED
+RCLK . . . . . . . . . . . . . . . .  B  ADDR  00CDH  NOT USED
+RD . . . . . . . . . . . . . . . . .  B  ADDR  00B7H  NOT USED
+REN. . . . . . . . . . . . . . . . .  B  ADDR  009CH  NOT USED
+RESET. . . . . . . . . . . . . . . .  C  ADDR  0000H  NOT USED
+RI . . . . . . . . . . . . . . . . .  B  ADDR  0098H  NOT USED
+RS0. . . . . . . . . . . . . . . . .  B  ADDR  00D3H  NOT USED
+RS1. . . . . . . . . . . . . . . . .  B  ADDR  00D4H  NOT USED
+RXD. . . . . . . . . . . . . . . . .  B  ADDR  00B0H  NOT USED
+SADDR. . . . . . . . . . . . . . . .  D  ADDR  00A9H  NOT USED
+SADDR_0. . . . . . . . . . . . . . .  D  ADDR  00A9H  NOT USED
+SADDR_1. . . . . . . . . . . . . . .  D  ADDR  00AAH  NOT USED
+SADEN. . . . . . . . . . . . . . . .  D  ADDR  00B9H  NOT USED
+SADEN_0. . . . . . . . . . . . . . .  D  ADDR  00B9H  NOT USED
+SADEN_1. . . . . . . . . . . . . . .  D  ADDR  00BAH  NOT USED
+SBUF . . . . . . . . . . . . . . . .  D  ADDR  0099H  NOT USED
+SCON . . . . . . . . . . . . . . . .  D  ADDR  0098H  NOT USED
+SCROLL . . . . . . . . . . . . . . .  C  ADDR  01CDH
+SCROLL_BACK. . . . . . . . . . . . .  C  ADDR  01F2H
+SCROLL_BACK_1. . . . . . . . . . . .  C  ADDR  0209H
+SCROLL_BACK_2. . . . . . . . . . . .  C  ADDR  0216H
+SCROLL_BACK_3. . . . . . . . . . . .  C  ADDR  021EH
+SCROLL_BACK_DATA_TYPE. . . . . . . .  C  ADDR  0131H
+SCROLL_END . . . . . . . . . . . . .  C  ADDR  022AH
+SCROLL_END1. . . . . . . . . . . . .  C  ADDR  048CH
+SCROLL_NEXT. . . . . . . . . . . . .  C  ADDR  01E2H
+SCROLL_NEXT_DATA_TYPE. . . . . . . .  C  ADDR  0149H
+SCROLL_PAGE. . . . . . . . . . . . .  C  ADDR  047BH
+SEMI_COLON . . . . . . . . . . . . .  C  ADDR  0479H
+SINT . . . . . . . . . . . . . . . .  C  ADDR  0023H  NOT USED
+SM0. . . . . . . . . . . . . . . . .  B  ADDR  009FH  NOT USED
+SM1. . . . . . . . . . . . . . . . .  B  ADDR  009EH  NOT USED
+SM2. . . . . . . . . . . . . . . . .  B  ADDR  009DH  NOT USED
+SP . . . . . . . . . . . . . . . . .  D  ADDR  0081H  NOT USED
+SPCON. . . . . . . . . . . . . . . .  D  ADDR  00C3H  NOT USED
+SPCR . . . . . . . . . . . . . . . .  D  ADDR  00D5H  NOT USED
+SPDAT. . . . . . . . . . . . . . . .  D  ADDR  00C5H  NOT USED
+SPDR . . . . . . . . . . . . . . . .  D  ADDR  0086H  NOT USED
+SPSR . . . . . . . . . . . . . . . .  D  ADDR  00AAH  NOT USED
+SPSTA. . . . . . . . . . . . . . . .  D  ADDR  00C4H  NOT USED
+STORE. . . . . . . . . . . . . . . .  C  ADDR  00D0H
+T0 . . . . . . . . . . . . . . . . .  B  ADDR  00B4H  NOT USED
+T1 . . . . . . . . . . . . . . . . .  B  ADDR  00B5H  NOT USED
+T2CON. . . . . . . . . . . . . . . .  D  ADDR  00C8H  NOT USED
+T2MOD. . . . . . . . . . . . . . . .  D  ADDR  00C9H  NOT USED
+TB8. . . . . . . . . . . . . . . . .  B  ADDR  009BH  NOT USED
+TCLK . . . . . . . . . . . . . . . .  B  ADDR  00CCH  NOT USED
+TCON . . . . . . . . . . . . . . . .  D  ADDR  0088H  NOT USED
+TF0. . . . . . . . . . . . . . . . .  B  ADDR  008DH  NOT USED
+TF1. . . . . . . . . . . . . . . . .  B  ADDR  008FH  NOT USED
+TF2. . . . . . . . . . . . . . . . .  B  ADDR  00CFH  NOT USED
+TH0. . . . . . . . . . . . . . . . .  D  ADDR  008CH  NOT USED
+TH1. . . . . . . . . . . . . . . . .  D  ADDR  008DH  NOT USED
+TH2. . . . . . . . . . . . . . . . .  D  ADDR  00CDH  NOT USED
+TI . . . . . . . . . . . . . . . . .  B  ADDR  0099H  NOT USED
+TIMER0 . . . . . . . . . . . . . . .  C  ADDR  000BH  NOT USED
+TIMER1 . . . . . . . . . . . . . . .  C  ADDR  001BH  NOT USED
+TIMER2 . . . . . . . . . . . . . . .  C  ADDR  002BH  NOT USED
+TL0. . . . . . . . . . . . . . . . .  D  ADDR  008AH  NOT USED
+TL1. . . . . . . . . . . . . . . . .  D  ADDR  008BH  NOT USED
+TL2. . . . . . . . . . . . . . . . .  D  ADDR  00CCH  NOT USED
+TMOD . . . . . . . . . . . . . . . .  D  ADDR  0089H  NOT USED
+TR0. . . . . . . . . . . . . . . . .  B  ADDR  008CH  NOT USED
+TR1. . . . . . . . . . . . . . . . .  B  ADDR  008EH  NOT USED
+TR2. . . . . . . . . . . . . . . . .  B  ADDR  00CAH  NOT USED
+TXD. . . . . . . . . . . . . . . . .  B  ADDR  00B1H  NOT USED
+VALUE1 . . . . . . . . . . . . . . .  C  ADDR  0244H
+VALUE10. . . . . . . . . . . . . . .  C  ADDR  029EH
+VALUE11. . . . . . . . . . . . . . .  C  ADDR  02A8H
+VALUE12. . . . . . . . . . . . . . .  C  ADDR  02B2H
+VALUE13. . . . . . . . . . . . . . .  C  ADDR  02BCH
+VALUE14. . . . . . . . . . . . . . .  C  ADDR  02C6H
+VALUE15. . . . . . . . . . . . . . .  C  ADDR  02D0H
+VALUE2 . . . . . . . . . . . . . . .  C  ADDR  024EH
+VALUE3 . . . . . . . . . . . . . . .  C  ADDR  0258H
+VALUE4 . . . . . . . . . . . . . . .  C  ADDR  0262H
+VALUE5 . . . . . . . . . . . . . . .  C  ADDR  026CH
+VALUE6 . . . . . . . . . . . . . . .  C  ADDR  0276H
+VALUE7 . . . . . . . . . . . . . . .  C  ADDR  0280H
+VALUE8 . . . . . . . . . . . . . . .  C  ADDR  028AH
+VALUE9 . . . . . . . . . . . . . . .  C  ADDR  0294H
+WDTCON . . . . . . . . . . . . . . .  D  ADDR  00A7H  NOT USED
+WDTPRG . . . . . . . . . . . . . . .  D  ADDR  00A7H  NOT USED
+WDTRST . . . . . . . . . . . . . . .  D  ADDR  00A6H  NOT USED
+WORD . . . . . . . . . . . . . . . .  C  ADDR  0161H
+WORD_LOOP. . . . . . . . . . . . . .  C  ADDR  016CH
+WORD_LOOP0 . . . . . . . . . . . . .  C  ADDR  016AH
+WORD_LOOP1 . . . . . . . . . . . . .  C  ADDR  018DH
+WR . . . . . . . . . . . . . . . . .  B  ADDR  00B6H  NOT USED
