@@ -1,7 +1,6 @@
-;Cameron Biniamow
-;ECEN 4330
-;Lab 1: MEMORY DUMP
-;Due: 01/29/2021
+; Author: CWB 
+; Description: MEMORY DUMP
+; Date: 01/29/2021
 
 ;*********************************************************************
 ;---------------------------------------------------------------------
@@ -983,7 +982,7 @@ L4:
 	ORG	400H
 
 COURSE:
-	DB	'ECEN4330', 0
+	DB	'DESIGN 1', 0
 
 MYNAME:
 	DB	'C.W.B.', 0
